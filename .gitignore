@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+*/__pycache__/
+
+# Node
+node_modules/
+*/node_modules/
+
+# Environment / Secrets
+.env
+*.env
+
+# Build output
+build/
+dist/
+*/build/
+*/dist/
+
+# OS/system files
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/
+
+# Logs
+*.log
+
+# Local data files if needed
+*.sqlite
+*.db
