@@ -11,37 +11,38 @@ from langchain.memory import ConversationBufferMemory
 from langchain_community.chat_message_histories import MongoDBChatMessageHistory
 from dotenv import load_dotenv
 from typing import Optional
-from fastapi.middleware.cors import CORSMiddleware   # ⭐ Added for CORS
+from fastapi.middleware.cors import CORSMiddleware
 
-# --- Load environment variables ---
+# ============ Load environment variables ============
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://uulocalhost:27017/")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 MONGO_DB = os.getenv("MONGO_DB", "diet_chat_db")
 
 if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY is missing. Please set it in your .env file.")
 
-# --- Configs ---
-GROQ_MODEL="llama-3.1-8b-instant"
-# --- Initialize FastAPI ---
+# ============ Model Config ============
+GROQ_MODEL = "llama-3.1-8b-instant"
+
+# ============ Initialize FastAPI ============
 app = FastAPI(title="Diet & Nutrition Chatbot (RAG + Persistent Memory)", version="1.1")
 
-# ⭐⭐ Add CORS Middleware Here ⭐⭐
+# ============ CORS Middleware ============
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all frontends
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Input schema ---
+# ============ Input schema ============
 class Question(BaseModel):
     user_id: Optional[str] = "default_user"
     question: str
 
-# --- Initialize Groq LLM ---
+# ============ Initialize Groq LLM ============
 try:
     llm = ChatGroq(
         groq_api_key=GROQ_API_KEY,
@@ -51,7 +52,7 @@ try:
 except Exception as e:
     raise RuntimeError(f"Failed to initialize LLM: {str(e)}")
 
-# --- Load and clean Nutrition dataset ---
+# ============ Load Dataset ============
 def load_nutrition(csv_path="Indian_Food_Nutrition_Processed.csv"):
     df = pd.read_csv(csv_path, encoding='utf-8')
     df.columns = df.columns.str.replace('Â', '', regex=False).str.strip()
@@ -61,7 +62,7 @@ def load_nutrition(csv_path="Indian_Food_Nutrition_Processed.csv"):
 
 nutrition_df = load_nutrition()
 
-# --- Convert CSV rows into text chunks for embeddings ---
+# Convert CSV rows to text chunks
 nutrition_texts = []
 for _, row in nutrition_df.iterrows():
     def safe_get(colnames, default="N/A"):
@@ -86,12 +87,12 @@ for _, row in nutrition_df.iterrows():
     )
     nutrition_texts.append(text)
 
-# --- Create embeddings & FAISS vector store ---
+# ============ Create embeddings & FAISS vector store ============
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 vectorstore = FAISS.from_texts(nutrition_texts, embedding=embeddings)
 retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-# --- Function to get per-user memory ---
+# ============ Get persistent memory per user ============
 def get_user_memory(user_id: str):
     chat_history = MongoDBChatMessageHistory(
         connection_string=MONGO_URI,
@@ -105,12 +106,12 @@ def get_user_memory(user_id: str):
         chat_memory=chat_history
     )
 
-# --- Root endpoint ---
+# ============ Root endpoint ============
 @app.get("/")
 def root():
     return {"message": "🥗 Diet & Nutrition Recommendation Chatbot is running successfully!"}
 
-# --- Ask endpoint ---
+# ============ Ask API ============
 @app.post("/ask")
 async def ask_diet(question: Question):
     try:
@@ -159,3 +160,9 @@ Answer:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"LLM Error: {str(e)}")
+
+# ============ Render Deployment Fix (use correct PORT) ============
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
