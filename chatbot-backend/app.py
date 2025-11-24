@@ -52,7 +52,7 @@ except Exception as e:
     raise RuntimeError(f"Failed to initialize LLM: {str(e)}")
 
 # --- Load and clean Nutrition dataset ---
-def load_nutrition(csv_path="D:\Diet Chatbot\chatbot-backend\Indian_Food_Nutrition_Processed.csv"):
+def load_nutrition(csv_path="Indian_Food_Nutrition_Processed.csv"):
     df = pd.read_csv(csv_path, encoding='utf-8')
     df.columns = df.columns.str.replace('Â', '', regex=False).str.strip()
     df.fillna(0, inplace=True)
